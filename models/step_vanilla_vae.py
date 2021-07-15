@@ -1,20 +1,19 @@
 import torch
 from models import BaseVAE
+from models.sampler import Sampler
 from torch import nn
 from torch.nn import functional as F
-
-from .sampler import Sampler
 from .types_ import *
 
 
-class VanillaVAE(BaseVAE):
+class StepVanillaVAE(BaseVAE):
 
     def __init__(self,
                  in_channels: int,
                  latent_dim: int,
                  hidden_dims: List = None,
                  **kwargs) -> None:
-        super(VanillaVAE, self).__init__()
+        super(StepVanillaVAE, self).__init__()
 
         self.latent_dim = latent_dim
 
@@ -71,8 +70,7 @@ class VanillaVAE(BaseVAE):
             nn.Conv2d(hidden_dims[-1], out_channels=3,
                       kernel_size=3, padding=1),
             nn.Tanh())
-
-        self.sampler = Sampler(self.latent_dim)
+        self.sampler = Sampler(latent_dim)
 
     def encode(self, input: Tensor) -> List[Tensor]:
         """
@@ -112,14 +110,16 @@ class VanillaVAE(BaseVAE):
         :param logvar: (Tensor) Standard deviation of the latent Gaussian [B x D]
         :return: (Tensor) [B x D]
         """
-        std = torch.exp(0.5 * logvar)
-        eps = torch.randn_like(std)
-        return eps * std + mu
+
+        # eps = torch.randn_like(logvar)
+        mus_resampled, log_var_resampled, samples = self.sampler(mu, logvar)
+        # std = torch.exp(0.5 * logvar)
+        return mus_resampled, log_var_resampled, samples
 
     def forward(self, input: Tensor, **kwargs) -> List[Tensor]:
         mu, log_var = self.encode(input)
-        z = self.reparameterize(mu, log_var)
-        return [self.decode(z), input, mu, log_var, z]
+        mu_repam, log_var_repam, z = self.reparameterize(mu, log_var)
+        return [self.decode(z), input, mu, log_var, z, mu_repam, log_var_repam]
 
     def loss_function(self,
                       *args,
@@ -135,14 +135,23 @@ class VanillaVAE(BaseVAE):
         input = args[1]
         mu = args[2]
         log_var = args[3]
+        mu_repam = args[5]
+        log_var_repam = args[6]
 
         kld_weight = kwargs['M_N']  # Account for the minibatch samples from the dataset
         recons_loss = F.mse_loss(recons, input)
+        mse_latent_mu_loss = F.mse_loss(mu, mu_repam)
+        mse_latent_std_loss = F.mse_loss(log_var, log_var_repam)
 
-        kld_loss = torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim=1), dim=0)
+        kld_loss_pre = torch.mean(-0.5 * torch.sum(1 + log_var[0:1] - mu[0:1] ** 2 - log_var[0:1].exp(), dim=1), dim=0)
+        kld_loss_post = torch.mean(
+            -0.5 * torch.sum(1 + log_var_repam[0:1] - mu_repam[0:1] ** 2 - log_var_repam[0:1].exp(), dim=1), dim=0)
 
-        loss = recons_loss + kld_weight * kld_loss * 0.001
-        return {'loss': loss, 'Reconstruction_Loss': recons_loss, 'KLD': kld_weight * kld_loss}
+        loss = 50 * recons_loss + kld_weight * (
+                kld_loss_pre + kld_loss_post) + mse_latent_mu_loss + mse_latent_std_loss
+        return {'loss': loss, 'Reconstruction_Loss': recons_loss,
+                'KLD': + kld_weight * (kld_loss_pre + kld_loss_post),
+                'MSE_mu': mse_latent_mu_loss, 'MSE_std': mse_latent_std_loss}
 
     def sample(self,
                num_samples: int,
@@ -161,8 +170,10 @@ class VanillaVAE(BaseVAE):
                                                        covariance_matrix=cov_matrix)
             z = m.sample_n(num_samples)
         else:
-            z = torch.randn(num_samples,
-                            self.latent_dim)
+            mu = torch.zeros(num_samples, self.latent_dim).to(current_device)
+            std = torch.ones(num_samples, self.latent_dim).to(current_device)
+            mu, std, z = self.sampler(mu, std, sample=True)
+            # z = z * std + mu
 
         z = z.to(current_device)
 

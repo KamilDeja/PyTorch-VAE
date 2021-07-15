@@ -29,6 +29,14 @@ if __name__ == "__main__":
                         help='Limit train and valid data',
                         type=float,
                         default=1.0)
+    parser.add_argument('--gpu_id',
+                        help='gpu id',
+                        type=int,
+                        default=0)
+    parser.add_argument('--skip_validation',
+                        action="store_true",
+                        default=False)
+
 
     args = parser.parse_args()
     with open(args.filename, 'r') as file:
@@ -45,7 +53,7 @@ if __name__ == "__main__":
     # )
 
     # For reproducibility
-    torch.cuda.set_device(0)
+    torch.cuda.set_device(args.gpu_id)
     device = torch.device("cuda")
     torch.manual_seed(config['logging_params']['manual_seed'])
     np.random.seed(config['logging_params']['manual_seed'])
@@ -56,7 +64,7 @@ if __name__ == "__main__":
     # experiment = VAEXperiment(model,
     #                           config['exp_params'])
     trainer = Trainer(vae_model=model, device=device, params=config, experiment_name=args.experiment_name,
-                      limit_data=args.limit_data)
+                      limit_data=args.limit_data, skip_validation=args.skip_validation)
     trainer.train()
 
     # runner = Trainer(weights_save_path=f"{tt_logger.save_dir}",

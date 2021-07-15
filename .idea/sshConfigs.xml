@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="SshConfigs">
+    <configs>
+      <sshConfig authType="PASSWORD" host="localhost" id="da868e20-a6da-4c24-8b7f-38cde749daf1" port="7778" customName="titan8_7778_stepVAE" nameFormat="CUSTOM" username="kdeja">
+        <option name="customName" value="titan8_7778_stepVAE" />
+      </sshConfig>
+    </configs>
+  </component>
+</project>
