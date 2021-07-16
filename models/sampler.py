@@ -11,7 +11,7 @@ class Sampler(nn.Module):
 
         self.latent_dim = latent_dim
         self.hidden_size = hidden_size
-        self.lstm_unit = nn.LSTMCell(input_size=1, hidden_size=hidden_size)
+        self.lstm_unit = nn.LSTMCell(input_size=2, hidden_size=hidden_size)
         self.lstm_projection = nn.LSTMCell(input_size=2 * hidden_size, hidden_size=2)
         # self.lstm_sampler = nn.LSTM(input_size=2, hidden_size=15, proj_size=2, batch_first=True)
 
@@ -21,6 +21,8 @@ class Sampler(nn.Module):
         eps = torch.randn_like(first_std)
         input = eps * first_std + first_mu
         input = input.unsqueeze(1)
+        input_indexes = torch.zeros_like(input)
+        input = torch.cat([input, input_indexes], 1)
         # x = torch.stack([mu, std]).permute(2, 1, 0)  # @TODO Check and fix [batch_size, seq_len, input_size]
         # output, _ = self.lstm_sampler(x)
         hidden_state = torch.zeros(len(input), self.hidden_size).to(input.device)
@@ -51,6 +53,9 @@ class Sampler(nn.Module):
             samples.append(input)
             if not sample:
                 input = mu[:, idx].unsqueeze(1)
+
+            input_indexes = torch.zeros_like(input) + idx
+            input = torch.cat([input, input_indexes], 1)
 
         mus_resampled = torch.stack(mus_resampled, dim=1)
         log_vars_resampled = torch.stack(log_vars_resampled, dim=1)

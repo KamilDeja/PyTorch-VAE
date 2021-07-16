@@ -147,7 +147,7 @@ class StepVanillaVAE(BaseVAE):
         kld_loss_post = torch.mean(
             -0.5 * torch.sum(1 + log_var_repam[0:1] - mu_repam[0:1] ** 2 - log_var_repam[0:1].exp(), dim=1), dim=0)
 
-        loss = 50 * recons_loss + kld_weight * (
+        loss = 100 * recons_loss + kld_weight * (
                 kld_loss_pre + kld_loss_post) + mse_latent_mu_loss + mse_latent_std_loss
         return {'loss': loss, 'Reconstruction_Loss': recons_loss,
                 'KLD': + kld_weight * (kld_loss_pre + kld_loss_post),

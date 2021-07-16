@@ -82,7 +82,7 @@
       <paths name="titan8_7778 (2)">
         <serverdata>
           <mappings>
-            <mapping deploy="/home/kdeja/PyTorch-VAE" local="$PROJECT_DIR$" />
+            <mapping deploy="PyTorch-VAE" local="$PROJECT_DIR$" />
           </mappings>
         </serverdata>
       </paths>
