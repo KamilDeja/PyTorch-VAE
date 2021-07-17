@@ -37,7 +37,6 @@ if __name__ == "__main__":
                         action="store_true",
                         default=False)
 
-
     args = parser.parse_args()
     with open(args.filename, 'r') as file:
         try:
@@ -60,7 +59,7 @@ if __name__ == "__main__":
     cudnn.deterministic = True
     cudnn.benchmark = False
 
-    model = vae_models[config['model_params']['name']](**config['model_params'])
+    model = vae_models[config['model_params']['name']](**config['model_params'], device=device)
     # experiment = VAEXperiment(model,
     #                           config['exp_params'])
     trainer = Trainer(vae_model=model, device=device, params=config, experiment_name=args.experiment_name,
